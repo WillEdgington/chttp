@@ -1,0 +1,3 @@
+[submodule "deps/clib"]
+	path = deps/clib
+	url = https://github.com/WillEdgington/clib
