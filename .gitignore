@@ -5,3 +5,8 @@
 
 # Dependency/Environment folders
 venv/
+
+# compiled test binaries
+tests/*
+!tests/*.c
+!tests/*.h
