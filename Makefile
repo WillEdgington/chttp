@@ -41,8 +41,8 @@ test: LDFLAGS += $(DEVFLAGS)
 test: $(TESTBIN)
 	@for bin in $(TESTBIN); do ./$$bin; done
 
-tests/%: tests/%.c $(CLIB_LIB)
-	$(CC) $(CFLAGS) $< $(LDFLAGS) -o $@
+tests/%: tests/%.c $(OBJ) $(CLIB_LIB)
+	$(CC) $(CFLAGS) $< $(filter-out src/main.o, $(OBJ)) $(LDFLAGS) -o $@
 
 -include $(DEPS)
 
