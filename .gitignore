@@ -3,10 +3,15 @@
 *.d
 *.a
 
+# Compiled chttp binary
+chttp
+!chttp/
+
 # Dependency/Environment folders
 venv/
+deps/
 
-# compiled test binaries
+# Compiled test binaries
 tests/*
 !tests/*.c
 !tests/*.h
