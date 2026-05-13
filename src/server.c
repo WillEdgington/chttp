@@ -29,6 +29,11 @@ static int setup_listener(int port) {
   return fd;
 }
 
+HttpConfig chttp_config_init(int port, const char *pub_dir) {
+  return (HttpConfig){.port = (port <= 0) ? 8080 : port,
+                      .public_dir = (pub_dir == NULL) ? "." : pub_dir};
+}
+
 void chttp_handle_connection(int client_fd) {
   char buffer[BUFFER_SIZE] = {0};
 
@@ -41,7 +46,7 @@ void chttp_handle_connection(int client_fd) {
   send(client_fd, response, strlen(response), 0);
 }
 
-int chttp_listen_and_serve(chttp_config config) {
+int chttp_listen_and_serve(HttpConfig config) {
   int server_fd = setup_listener(config.port);
   if (server_fd < 0)
     return -1;

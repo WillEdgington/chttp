@@ -1,7 +1,7 @@
 #include "chttp/server.h"
 
 int main() {
-  chttp_config config = {.port = 8080, .public_dir = "./public"};
+  HttpConfig config = chttp_config_init(-1, "./public");
 
   return chttp_listen_and_serve(config);
 }
