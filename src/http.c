@@ -56,6 +56,18 @@ static char *parse_header(HttpRequest *req, const char *ptr) {
   return (char *)end + 2;
 }
 
+static char *consume_token(const char **cursor, const char *delim,
+                           Arena *arena) {
+  const char *start = *cursor;
+  const char *end = strstr(start, delim);
+  if (!end)
+    return NULL;
+
+  char *token = arena_strndup(arena, start, end - start);
+  *cursor = end + strlen(delim);
+  return token;
+}
+
 HttpMethod chttp_method_from_string(const char *method_str) {
   if (strcmp(method_str, "GET") == 0)
     return HTTP_METHOD_GET;
@@ -81,35 +93,28 @@ HttpRequest *chttp_parse_request(const char *raw_data, Arena *arena) {
   if (http_request_init(req, arena) != 0)
     return NULL;
 
-  const char *line_start = raw_data;
-  const char *next_space;
+  const char *cursor = raw_data;
 
   // Method
-  next_space = strchr(line_start, ' ');
-  if (!next_space)
+  char *method_str = consume_token(&cursor, " ", arena);
+  if (!method_str)
     return NULL;
-  char *method_tmp = arena_strndup(arena, line_start, next_space - line_start);
-  req->method = chttp_method_from_string(method_tmp);
-  line_start = next_space + 1;
+  req->method = chttp_method_from_string(method_str);
 
   // Path
-  next_space = strchr(line_start, ' ');
-  if (!next_space)
+  req->path = consume_token(&cursor, " ", arena);
+  if (!req->path)
     return NULL;
-  req->path = arena_strndup(arena, line_start, next_space - line_start);
-  line_start = next_space + 1;
 
   // Version
-  const char *line_end = strstr(line_start, "\r\n");
-  if (!line_end)
+  req->version = consume_token(&cursor, "\r\n", arena);
+  if (!req->version)
     return NULL;
-  req->version = arena_strndup(arena, line_start, line_end - line_start);
-  line_start = line_end + 2;
 
   // Headers
-  while (strncmp(line_start, "\r\n", 2) != 0 && *line_start != '\0') {
-    line_start = parse_header(req, line_start);
-    if (line_start == NULL)
+  while (strncmp(cursor, "\r\n", 2) != 0 && *cursor != '\0') {
+    cursor = parse_header(req, cursor);
+    if (cursor == NULL)
       break;
   }
   return req;
