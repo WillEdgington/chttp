@@ -2,6 +2,7 @@
 #include "clib/arena.h"
 #include "clib/hashmap.h"
 
+#include <stdio.h>
 #include <string.h>
 #include <strings.h>
 
@@ -23,8 +24,9 @@ static size_t str_hash(const void *key, size_t key_size) {
 }
 
 static int http_request_init(HttpRequest *request, Arena *arena) {
-  if (hashmap_init(request->headers, sizeof(char *), sizeof(char *), arena) !=
-      0)
+  request->headers = arena_alloc(arena, sizeof(HashMap));
+  if (request->headers == NULL || hashmap_init(request->headers, sizeof(char *),
+                                               sizeof(char *), arena) != 0)
     return -1;
   hashmap_set_functions(request->headers, str_hash, str_compare);
   request->arena = arena;
@@ -89,7 +91,6 @@ const char *chttp_method_to_string(HttpMethod method) {
 
 HttpRequest *chttp_parse_request(const char *raw_data, Arena *arena) {
   HttpRequest *req = arena_alloc(arena, sizeof(HttpRequest));
-  req->headers = arena_alloc(arena, sizeof(HashMap));
   if (http_request_init(req, arena) != 0)
     return NULL;
 
@@ -122,4 +123,56 @@ HttpRequest *chttp_parse_request(const char *raw_data, Arena *arena) {
 
 void chttp_request_free(HttpRequest *request) {
   hashmap_free(request->headers);
+}
+
+int chttp_response_init(HttpResponse *res, Arena *arena) {
+  res->headers = arena_alloc(arena, sizeof(HashMap));
+  if (res->headers == NULL ||
+      hashmap_init(res->headers, sizeof(char *), sizeof(char *), arena) != 0)
+    return -1;
+  hashmap_set_functions(res->headers, str_hash, str_compare);
+
+  res->arena = arena;
+  res->status_code = 200;
+  res->status_message = "OK";
+  res->body = NULL;
+  res->body_len = 0;
+  return 0;
+}
+
+char *chttp_serialise_response(HttpResponse *res, size_t *out_len) {
+  size_t metadata_cap = 8192; // will calculate properly at some point, but 8 KB
+                              // should be safe for now
+  char *buffer = arena_alloc(res->arena, metadata_cap + res->body_len);
+  if (buffer == NULL)
+    return NULL;
+
+  size_t offset = 0;
+
+  offset +=
+      snprintf(buffer + offset, metadata_cap - offset, "HTTP/1.1 %d %s\r\n",
+               res->status_code, res->status_message);
+
+  Iter it = hashmap_iter(res->headers);
+  while (it.next(&it)) {
+    char *key = *(char **)it.current.key;
+    char *val = *(char **)it.current.value;
+    offset += snprintf(buffer + offset, metadata_cap - offset, "%s: %s\r\n",
+                       key, val);
+  }
+
+  offset += snprintf(buffer + offset, metadata_cap - offset,
+                     "Content-Length: %zu\r\n", res->body_len);
+  offset += snprintf(buffer + offset, metadata_cap - offset, "\r\n");
+
+  if (res->body != NULL && res->body_len > 0) {
+    memcpy(buffer + offset, res->body, res->body_len);
+    offset += res->body_len;
+  }
+  *out_len = offset;
+  return buffer;
+}
+
+void chttp_response_free(HttpResponse *response) {
+  hashmap_free(response->headers);
 }
