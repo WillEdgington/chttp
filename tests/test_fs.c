@@ -1,0 +1,53 @@
+#include "chttp/fs.h"
+#include "clib/arena.h"
+#include "clib/test_framework.h"
+#include <sys/stat.h>
+#include <unistd.h>
+
+void setup_test_dir() { mkdir("test_www", 0777); }
+
+void teardown_test_dir() { rmdir("test_www"); }
+
+void setup_test_html_mock() {
+  FILE *f = fopen("test_www/index.html", "w");
+  if (f != NULL) {
+    fprintf(f, "<h1>Testing</h1>");
+    fclose(f);
+  }
+}
+
+void teardown_test_html_mock() { unlink("test_www/index.html"); }
+
+void test_html_file(Arena *a) {
+  setup_test_html_mock();
+
+  char *path = chttp_resolve_path("/index.html", "test_www", a);
+  ASSERT_PTR_NOT_NULL(path, "Should resolve valid file");
+  ASSERT_PTR_NOT_NULL(strstr(path, "test_www/index.html"), "Path mismatch");
+
+  char *unsafe = chttp_resolve_path("/../../etc/passwords", "test_www", a);
+  ASSERT_PTR_NULL(unsafe, "Should block directory traversal");
+
+  size_t size;
+  char *content = chttp_read_file(path, a, &size);
+
+  ASSERT_PTR_NOT_NULL(content, "File should be readable");
+  ASSERT_INT_EQ(size, 16, "Size mismatch");
+  ASSERT_STR_EQ(content, "<h1>Testing</h1>", "Content mismatch");
+
+  teardown_test_html_mock();
+}
+
+int main() {
+  Arena a;
+  arena_init(&a, 4096); // 4 KB
+  setup_test_dir();
+
+  printf("\nRunning: %s...\n", __FILE__);
+  test_html_file(&a);
+  test_summary();
+
+  teardown_test_dir();
+  arena_free(&a);
+  return tests_failed > 0 ? 1 : 0;
+}
