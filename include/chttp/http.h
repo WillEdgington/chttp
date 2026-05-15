@@ -34,6 +34,7 @@ void chttp_request_free(HttpRequest *request);
 
 int chttp_response_init(HttpResponse *res, Arena *arena);
 char *chttp_serialise_response(HttpResponse *res, size_t *out_len);
+const char *chttp_get_mime_type(const char *path);
 void chttp_response_free(HttpResponse *response);
 
 #endif

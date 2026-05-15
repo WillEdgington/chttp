@@ -173,6 +173,50 @@ char *chttp_serialise_response(HttpResponse *res, size_t *out_len) {
   return buffer;
 }
 
+const char *chttp_get_mime_type(const char *path) {
+  const char *suf = strrchr(path, '.');
+  if (!suf)
+    return "application/octet-stream"; // unknown binary data
+
+  // Text and Data
+  if (strcmp(suf, ".html") == 0 || strcmp(suf, ".htm") == 0)
+    return "text/html";
+  if (strcmp(suf, ".css") == 0)
+    return "text/css";
+  if (strcmp(suf, ".txt") == 0)
+    return "text/plain";
+  if (strcmp(suf, ".md") == 0)
+    return "text/markdown";
+  if (strcmp(suf, ".js") == 0)
+    return "application/javascript";
+  if (strcmp(suf, ".json") == 0)
+    return "application/json";
+  if (strcmp(suf, ".xml") == 0)
+    return "application/xml";
+
+  // Images
+  if (strcmp(suf, ".png") == 0)
+    return "image/png";
+  if (strcmp(suf, ".jpg") == 0 || strcmp(suf, ".jpeg") == 0)
+    return "image/jpeg";
+  if (strcmp(suf, ".gif") == 0)
+    return "image/gif";
+  if (strcmp(suf, ".svg") == 0)
+    return "image/svg+xml";
+
+  // Media
+  if (strcmp(suf, ".mp4") == 0)
+    return "video/mp4";
+  if (strcmp(suf, ".mov") == 0)
+    return "video/quicktime";
+  if (strcmp(suf, ".mp3") == 0)
+    return "audio/mpeg";
+  if (strcmp(suf, ".wav") == 0)
+    return "audio/wav";
+
+  return "application/octet-stream";
+}
+
 void chttp_response_free(HttpResponse *response) {
   hashmap_free(response->headers);
 }
