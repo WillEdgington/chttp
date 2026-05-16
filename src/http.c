@@ -35,7 +35,7 @@ static int http_request_init(HttpRequest *request, Arena *arena) {
 
 static char *arena_strndup(Arena *arena, const char *src, size_t n) {
   char *dest = arena_alloc(arena, n + 1);
-  if (dest) {
+  if (dest != NULL) {
     memcpy(dest, src, n);
     dest[n] = '\0';
   }
@@ -45,7 +45,7 @@ static char *arena_strndup(Arena *arena, const char *src, size_t n) {
 static char *parse_header(HttpRequest *req, const char *ptr) {
   const char *colon = strchr(ptr, ':');
   const char *end = strstr(ptr, "\r\n");
-  if (!colon || !end)
+  if (colon == NULL || end == NULL)
     return NULL;
 
   char *key = arena_strndup(req->arena, ptr, colon - ptr);
@@ -62,12 +62,31 @@ static char *consume_token(const char **cursor, const char *delim,
                            Arena *arena) {
   const char *start = *cursor;
   const char *end = strstr(start, delim);
-  if (!end)
+  if (end == NULL)
     return NULL;
 
   char *token = arena_strndup(arena, start, end - start);
   *cursor = end + strlen(delim);
   return token;
+}
+
+static size_t calculate_response_metadata_len(HttpResponse *res) {
+  size_t len = 0;
+
+  len += snprintf(NULL, 0, "HTTP/1.1 %d %s\r\n", res->status_code,
+                  res->status_message);
+
+  Iter it = hashmap_iter(res->headers);
+  while (it.next(&it)) {
+    char *key = *(char **)it.current.key;
+    char *val = *(char **)it.current.value;
+    len += strlen(key) + 2 + strlen(val) + 2;
+  }
+
+  len += snprintf(NULL, 0, "Content-Length: %zu\r\n", res->body_len);
+  len += 2;
+
+  return len;
 }
 
 HttpMethod chttp_method_from_string(const char *method_str) {
@@ -98,18 +117,18 @@ HttpRequest *chttp_parse_request(const char *raw_data, Arena *arena) {
 
   // Method
   char *method_str = consume_token(&cursor, " ", arena);
-  if (!method_str)
+  if (method_str == NULL)
     return NULL;
   req->method = chttp_method_from_string(method_str);
 
   // Path
   req->path = consume_token(&cursor, " ", arena);
-  if (!req->path)
+  if (req->path == NULL)
     return NULL;
 
   // Version
   req->version = consume_token(&cursor, "\r\n", arena);
-  if (!req->version)
+  if (req->version == NULL)
     return NULL;
 
   // Headers
@@ -141,29 +160,28 @@ int chttp_response_init(HttpResponse *res, Arena *arena) {
 }
 
 char *chttp_serialise_response(HttpResponse *res, size_t *out_len) {
-  size_t metadata_cap = 8192; // will calculate properly at some point, but 8 KB
-                              // should be safe for now
-  char *buffer = arena_alloc(res->arena, metadata_cap + res->body_len);
+  size_t metadata_len = calculate_response_metadata_len(res);
+  size_t total_cap = metadata_len + res->body_len + 1;
+  char *buffer = arena_alloc(res->arena, total_cap + res->body_len);
   if (buffer == NULL)
     return NULL;
 
   size_t offset = 0;
 
-  offset +=
-      snprintf(buffer + offset, metadata_cap - offset, "HTTP/1.1 %d %s\r\n",
-               res->status_code, res->status_message);
+  offset += snprintf(buffer + offset, total_cap - offset, "HTTP/1.1 %d %s\r\n",
+                     res->status_code, res->status_message);
 
   Iter it = hashmap_iter(res->headers);
   while (it.next(&it)) {
     char *key = *(char **)it.current.key;
     char *val = *(char **)it.current.value;
-    offset += snprintf(buffer + offset, metadata_cap - offset, "%s: %s\r\n",
-                       key, val);
+    offset +=
+        snprintf(buffer + offset, total_cap - offset, "%s: %s\r\n", key, val);
   }
 
-  offset += snprintf(buffer + offset, metadata_cap - offset,
+  offset += snprintf(buffer + offset, total_cap - offset,
                      "Content-Length: %zu\r\n", res->body_len);
-  offset += snprintf(buffer + offset, metadata_cap - offset, "\r\n");
+  offset += snprintf(buffer + offset, total_cap - offset, "\r\n");
 
   if (res->body != NULL && res->body_len > 0) {
     memcpy(buffer + offset, res->body, res->body_len);
@@ -175,7 +193,7 @@ char *chttp_serialise_response(HttpResponse *res, size_t *out_len) {
 
 const char *chttp_get_mime_type(const char *path) {
   const char *suf = strrchr(path, '.');
-  if (!suf)
+  if (suf == NULL)
     return "application/octet-stream"; // unknown binary data
 
   // Text and Data
