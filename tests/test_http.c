@@ -52,6 +52,8 @@ void test_serialise_basic_response() {
   const char *val = "localhost";
   hashmap_put(res.headers, &key, &val);
 
+  res.status_code = 200;
+  res.status_message = "OK";
   res.body = "Testing...";
   res.body_len = 10;
 
