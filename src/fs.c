@@ -1,4 +1,5 @@
 #define _DEFAULT_SOURCE // Necessary for realpath on many Linux systems
+#include "chttp/fs.h"
 #include "clib/arena.h"
 #include <limits.h>
 #include <stdio.h>
