@@ -49,7 +49,7 @@ char *chttp_read_file(const char *full_path, Arena *arena, size_t *out_size) {
   *out_size = ftell(f);
   rewind(f);
 
-  char *buffer = arena_alloc(arena, *out_size);
+  char *buffer = arena_alloc(arena, *out_size + 1);
   if (buffer != NULL) {
     fread(buffer, 1, *out_size, f);
     buffer[*out_size] = '\0';
