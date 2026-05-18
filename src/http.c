@@ -92,8 +92,8 @@ static size_t calculate_response_metadata_len(HttpResponse *res) {
 HttpMethod chttp_method_from_string(const char *method_str) {
   if (strcmp(method_str, "GET") == 0)
     return HTTP_METHOD_GET;
-  if (strcmp(method_str, "POST") == 0)
-    return HTTP_METHOD_POST;
+  // if (strcmp(method_str, "POST") == 0)
+  //   return HTTP_METHOD_POST;
   return HTTP_METHOD_UNKNOWN;
 }
 
@@ -101,8 +101,8 @@ const char *chttp_method_to_string(HttpMethod method) {
   switch (method) {
   case HTTP_METHOD_GET:
     return "GET";
-  case HTTP_METHOD_POST:
-    return "POST";
+  // case HTTP_METHOD_POST:
+  //   return "POST";
   default:
     return "UNKNOWN";
   }
@@ -152,8 +152,8 @@ int chttp_response_init(HttpResponse *res, Arena *arena) {
   hashmap_set_functions(res->headers, str_hash, str_compare);
 
   res->arena = arena;
-  res->status_code = 200;
-  res->status_message = "OK";
+  res->status_code = 405;
+  res->status_message = "Method Not Allowed";
   res->body = NULL;
   res->body_len = 0;
   return 0;

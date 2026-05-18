@@ -6,7 +6,7 @@
 
 typedef enum {
   HTTP_METHOD_GET,
-  HTTP_METHOD_POST,
+  // HTTP_METHOD_POST,
   HTTP_METHOD_UNKNOWN
 } HttpMethod;
 
