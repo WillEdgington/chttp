@@ -117,19 +117,24 @@ HttpRequest *chttp_parse_request(const char *raw_data, Arena *arena) {
 
   // Method
   char *method_str = consume_token(&cursor, " ", arena);
-  if (method_str == NULL)
+  if (method_str == NULL) {
+    hashmap_free(req->headers);
     return NULL;
+  }
   req->method = chttp_method_from_string(method_str);
 
   // Path
   req->path = consume_token(&cursor, " ", arena);
-  if (req->path == NULL)
+  if (req->path == NULL) {
+    hashmap_free(req->headers);
     return NULL;
-
+  }
   // Version
   req->version = consume_token(&cursor, "\r\n", arena);
-  if (req->version == NULL)
+  if (req->version == NULL) {
+    hashmap_free(req->headers);
     return NULL;
+  }
 
   // Headers
   while (strncmp(cursor, "\r\n", 2) != 0 && *cursor != '\0') {
