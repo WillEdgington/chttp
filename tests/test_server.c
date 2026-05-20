@@ -66,6 +66,20 @@ void test_handle_connection_invalid_request() {
   close(client_side);
 }
 
+void test_handle_error_status_code_responses() {
+  int fds[2];
+
+  socketpair(AF_UNIX, SOCK_STREAM, 0, fds);
+  int server_side = fds[0];
+  int client_side = fds[1];
+
+  const char *not_found_req = "GET /unknown.html HTTP/1.1\r\n\r\n";
+  write(client_side, not_found_req, strlen(not_found_req));
+  ASSERT_INT_EQ(
+      chttp_handle_connection(server_side, "test_www"), -1,
+      "Server should return -1 error status code for 404 status code");
+}
+
 int main() {
   setup_test_dir();
   setup_test_index_mock();
@@ -73,6 +87,7 @@ int main() {
   printf("\nRunning: %s\n", __FILE__);
   test_handle_connection_sends_valid_http();
   test_handle_connection_invalid_request();
+  test_handle_error_status_code_responses();
   test_summary();
 
   teardown_test_index_mock();
