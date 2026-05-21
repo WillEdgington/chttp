@@ -75,9 +75,20 @@ void test_handle_error_status_code_responses() {
 
   const char *not_found_req = "GET /unknown.html HTTP/1.1\r\n\r\n";
   write(client_side, not_found_req, strlen(not_found_req));
+
   ASSERT_INT_EQ(
-      chttp_handle_connection(server_side, "test_www"), -1,
-      "Server should return -1 error status code for 404 status code");
+      chttp_handle_connection(server_side, "test_www"), 0,
+      "Server should return 0 (Handled) even when serving a 404 status code");
+
+  char response[1024] = {0};
+  read(client_side, response, sizeof(response) - 1);
+  ASSERT_PTR_NOT_NULL(
+      strstr(response, "HTTP/1.1 404 Not Found"),
+      "Response protocol stream should specify 404 status layout");
+  ASSERT_PTR_NOT_NULL(strstr(response, "Content-Type: text/html"),
+                      "Response headers should retain HTML mime signatures");
+  close(server_side);
+  close(client_side);
 }
 
 int main() {
