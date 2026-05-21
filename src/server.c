@@ -61,10 +61,10 @@ int chttp_handle_connection(int client_fd, const char *pub_dir) {
     return -1;
   }
   HttpResponse *res = chttp_handle_request(req, pub_dir);
-  if (res == NULL || res->status_code != 200) {
-    chttp_request_free(req);
+  if (res == NULL || res->body == NULL) {
     if (res != NULL)
       chttp_response_free(res);
+    chttp_request_free(req);
     arena_free(&connection_arena);
     return -1;
   }
