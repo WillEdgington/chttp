@@ -13,15 +13,15 @@ void test_parse_valid_get_request() {
                     "User-Agent: test-agent\r\n"
                     "\r\n";
   HttpRequest *req = chttp_parse_request(raw, &a);
-  ASSERT_PTR_NOT_NULL(req, "Parser returned NULL for valid request");
+  ASSERT_PTR_NOT_NULL(req, "Parser should not return NULL for valid request");
   ASSERT(req->method == HTTP_METHOD_GET, "Method should be GET");
-  ASSERT_STR_EQ(req->path, "/index.html", "Path mismatch");
-  ASSERT_STR_EQ(req->version, "HTTP/1.1", "Version mismatch");
+  ASSERT_STR_EQ(req->path, "/index.html", "Path should be /index.html");
+  ASSERT_STR_EQ(req->version, "HTTP/1.1", "Version should be HTTP/1.1");
 
   const char *key = "Host";
   char *host = *(char **)hashmap_get(req->headers, &key);
-  ASSERT_PTR_NOT_NULL(host, "Host header missing");
-  ASSERT_STR_EQ(host, "localhost", "Host value incorrect");
+  ASSERT_PTR_NOT_NULL(host, "Host header should not be missing");
+  ASSERT_STR_EQ(host, "localhost", "Host value should be correct (localhost)");
 
   chttp_request_free(req);
   arena_free(&a);
@@ -59,7 +59,10 @@ void test_serialise_basic_response() {
 
   size_t len;
   char *raw = chttp_serialise_response(&res, &len);
-  ASSERT(strstr(raw, "HTTP/1.1 200 OK") != NULL, "Status line missing");
+  ASSERT_PTR_NOT_NULL(strstr(raw, "HTTP/1.1 200 OK"),
+                      "Status line should be in serialised response");
+  ASSERT_PTR_NOT_NULL(strstr(raw, "Host: localhost"),
+                      "Headers should be serialised");
 
   chttp_response_free(&res);
   arena_free(&a);
