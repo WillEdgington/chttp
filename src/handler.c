@@ -1,4 +1,5 @@
 #include "chttp/handler.h"
+#include "chttp/err.h"
 #include "chttp/fs.h"
 #include "chttp/http.h"
 #include "clib/hashmap.h"
@@ -16,16 +17,14 @@ static void handle_get(HttpRequest *req, const char *base_dir,
 
   char *full_path = chttp_resolve_path(target_path, base_dir, req->arena);
   if (full_path == NULL) {
-    res->status_code = 404;
-    res->status_message = "Not Found";
+    chttp_create_error_response(res, 404, "Not Found", base_dir);
     return;
   }
 
   size_t file_size = 0;
   char *file_bytes = chttp_read_file(full_path, res->arena, &file_size);
   if (file_bytes == NULL) {
-    res->status_code = 404;
-    res->status_message = "Not Found";
+    chttp_create_error_response(res, 404, "Not Found", base_dir);
     return;
   }
 
@@ -40,9 +39,14 @@ static void handle_get(HttpRequest *req, const char *base_dir,
   hashmap_put(res->headers, &header_key, &header_val);
 }
 
+static void handle_unknown(HttpRequest *req, const char *base_dir,
+                           HttpResponse *res) {
+  (void)req;
+  chttp_create_error_response(res, 405, "Method Not Allowed", base_dir);
+}
+
 static const MethodHandler method_handlers[] = {
-    [HTTP_METHOD_GET] = handle_get,
-};
+    [HTTP_METHOD_GET] = handle_get, [HTTP_METHOD_UNKNOWN] = handle_unknown};
 
 HttpResponse *chttp_handle_request(HttpRequest *req, const char *base_dir) {
   if (req == NULL)
@@ -52,10 +56,8 @@ HttpResponse *chttp_handle_request(HttpRequest *req, const char *base_dir) {
   if (res == NULL || chttp_response_init(res, req->arena) != 0)
     return NULL;
 
-  if (req->method != HTTP_METHOD_UNKNOWN) {
-    MethodHandler handler = method_handlers[req->method];
-    if (handler != NULL)
-      handler(req, base_dir, res);
-  }
+  MethodHandler handler = method_handlers[req->method];
+  if (handler != NULL)
+    handler(req, base_dir, res);
   return res;
 }
