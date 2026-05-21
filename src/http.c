@@ -77,7 +77,7 @@ static size_t calculate_response_metadata_len(HttpResponse *res) {
                   res->status_message);
 
   Iter it = hashmap_iter(res->headers);
-  while (it.next(&it)) {
+  while (it.next(&it) == 0) {
     char *key = *(char **)it.current.key;
     char *val = *(char **)it.current.value;
     len += strlen(key) + 2 + strlen(val) + 2;
@@ -177,7 +177,7 @@ char *chttp_serialise_response(HttpResponse *res, size_t *out_len) {
                      res->status_code, res->status_message);
 
   Iter it = hashmap_iter(res->headers);
-  while (it.next(&it)) {
+  while (it.next(&it) == 0) {
     char *key = *(char **)it.current.key;
     char *val = *(char **)it.current.value;
     offset +=
@@ -193,6 +193,7 @@ char *chttp_serialise_response(HttpResponse *res, size_t *out_len) {
     offset += res->body_len;
   }
   *out_len = offset;
+  buffer[offset] = *"\0";
   return buffer;
 }
 
