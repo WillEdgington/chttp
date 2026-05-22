@@ -1,3 +1,4 @@
+#include "chttp/config.h"
 #include "chttp/server.h"
 #include <signal.h>
 #include <stdio.h>

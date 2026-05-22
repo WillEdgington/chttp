@@ -1,4 +1,5 @@
 #include "chttp/server.h"
+#include "chttp/config.h"
 #include "chttp/handler.h"
 #include "chttp/http.h"
 #include "clib/arena.h"
@@ -31,11 +32,6 @@ static int setup_listener(int port) {
     return -1;
 
   return fd;
-}
-
-HttpConfig chttp_config_init(int port, const char *pub_dir) {
-  return (HttpConfig){.port = (port <= 0) ? 8080 : port,
-                      .public_dir = (pub_dir == NULL) ? "." : pub_dir};
 }
 
 int chttp_handle_connection(int client_fd, const char *pub_dir) {
