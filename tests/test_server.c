@@ -32,7 +32,7 @@ void test_handle_connection_sends_valid_http() {
   const char *request = "GET /index.html HTTP/1.1\r\n\r\n";
   write(client_side, request, strlen(request));
 
-  chttp_handle_connection(server_side, "test_www");
+  chttp_handle_connection(server_side, "test_www", NULL);
 
   char response[1024] = {0};
   ssize_t bytes_read = read(client_side, response, sizeof(response) - 1);
@@ -60,7 +60,7 @@ void test_handle_connection_invalid_request() {
   write(client_side, bad_request, strlen(bad_request));
 
   ASSERT_INT_EQ(
-      chttp_handle_connection(server_side, "test_www"), -1,
+      chttp_handle_connection(server_side, "test_www", NULL), -1,
       "Server should return -1 error status code for invalid request");
   close(server_side);
   close(client_side);
@@ -77,7 +77,7 @@ void test_handle_error_status_code_responses() {
   write(client_side, not_found_req, strlen(not_found_req));
 
   ASSERT_INT_EQ(
-      chttp_handle_connection(server_side, "test_www"), 0,
+      chttp_handle_connection(server_side, "test_www", NULL), 0,
       "Server should return 0 (Handled) even when serving a 404 status code");
 
   char response[1024] = {0};
