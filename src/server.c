@@ -2,7 +2,9 @@
 #include "chttp/config.h"
 #include "chttp/handler.h"
 #include "chttp/http.h"
+#include "chttp/logger.h"
 #include "clib/arena.h"
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <string.h>
@@ -12,6 +14,18 @@
 #define BACKLOG 10
 #define BUFFER_SIZE 4096           // 4 KB
 #define CONNECTION_ARENA_SIZE 8192 // 8 KB
+
+char *reconstruct_request_line(HttpRequest *req) {
+  const char *method_str = chttp_method_to_string(req->method);
+  size_t line_len =
+      snprintf(NULL, 0, "%s %s %s", method_str, req->path ? req->path : "/",
+               req->version ? req->version : "HTTP/1.1");
+  char *req_line_buf = arena_alloc(req->arena, line_len);
+  snprintf(req_line_buf, line_len, "%s %s %s",
+           chttp_method_to_string(req->method), req->path ? req->path : "/",
+           req->version ? req->version : "HTTP/1.1");
+  return req_line_buf;
+}
 
 static int setup_listener(int port) {
   int fd;
@@ -34,7 +48,8 @@ static int setup_listener(int port) {
   return fd;
 }
 
-int chttp_handle_connection(int client_fd, const char *pub_dir) {
+int chttp_handle_connection(int client_fd, const char *pub_dir,
+                            const char *client_ip) {
   Arena connection_arena;
   if (arena_init(&connection_arena, CONNECTION_ARENA_SIZE) != 0)
     return -1;
@@ -75,6 +90,8 @@ int chttp_handle_connection(int client_fd, const char *pub_dir) {
   }
   send(client_fd, raw_res, res_len, 0);
 
+  chttp_log_http(client_ip, reconstruct_request_line(req), res->status_code,
+                 res_len);
   chttp_request_free(req);
   chttp_response_free(res);
   arena_free(&connection_arena);
@@ -83,8 +100,10 @@ int chttp_handle_connection(int client_fd, const char *pub_dir) {
 
 int chttp_listen_and_serve(HttpConfig *config) {
   int server_fd = setup_listener(config->port);
-  if (server_fd < 0)
+  if (server_fd < 0) {
+    LOG_ERROR("Failed to bind listener to port %d", config->port);
     return -1;
+  }
 
   while (1) {
     struct sockaddr_in address;
@@ -92,7 +111,8 @@ int chttp_listen_and_serve(HttpConfig *config) {
     int client_fd = accept(server_fd, (struct sockaddr *)&address, &addrlen);
 
     if (client_fd >= 0) {
-      chttp_handle_connection(client_fd, config->public_dir);
+      char *client_ip = inet_ntoa(address.sin_addr);
+      chttp_handle_connection(client_fd, config->public_dir, client_ip);
       close(client_fd);
     }
   }
