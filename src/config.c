@@ -1,5 +1,6 @@
 #include "chttp/config.h"
 #include "chttp/fs.h"
+#include "chttp/logger.h"
 #include "clib/arena.h"
 #include <ctype.h>
 #include <stdlib.h>
@@ -47,15 +48,44 @@ static void assign_public_dir(HttpConfig *config, const char *val,
   }
 }
 
+static void assign_log_level(HttpConfig *config, const char *val) {
+  if (val == NULL || *val == '\0')
+    return;
+
+  if (strcmp(val, "DEBUG") == 0 || strcmp(val, "0") == 0) {
+    config->log_level = LOG_LEVEL_DEBUG;
+  } else if (strcmp(val, "INFO") == 0 || strcmp(val, "1") == 0) {
+    config->log_level = LOG_LEVEL_INFO;
+  } else if (strcmp(val, "WARN") == 0 || strcmp(val, "2") == 0) {
+    config->log_level = LOG_LEVEL_WARN;
+  } else if (strcmp(val, "ERROR") == 0 || strcmp(val, "3") == 0) {
+    config->log_level = LOG_LEVEL_ERROR;
+  }
+}
+
+static void assign_log_filepath(HttpConfig *config, const char *val,
+                                Arena *arena) {
+  if (val == NULL || *val == '\0')
+    return;
+
+  size_t len = strlen(val);
+  char *path_copy = arena_alloc(arena, len + 1);
+  if (path_copy != NULL) {
+    memcpy(path_copy, val, len + 1);
+    config->log_filepath = path_copy;
+  }
+}
+
 static void resolve_server_key_value_pair(HttpConfig *config, const char *key,
                                           const char *val, Arena *arena) {
   if (strcmp(key, "port") == 0) {
     assign_port(config, val);
-    return;
-  }
-  if (strcmp(key, "public_dir") == 0) {
+  } else if (strcmp(key, "public_dir") == 0) {
     assign_public_dir(config, val, arena);
-    return;
+  } else if (strcmp(key, "log_level") == 0) {
+    assign_log_level(config, val);
+  } else if (strcmp(key, "log_file") == 0) {
+    assign_log_filepath(config, val, arena);
   }
 }
 
@@ -143,7 +173,9 @@ static void resolve_config_file(HttpConfig *config, const char *content,
 
 HttpConfig chttp_config_init(int port, const char *pub_dir) {
   return (HttpConfig){.port = (port <= 0) ? 8080 : port,
-                      .public_dir = (pub_dir == NULL) ? "." : pub_dir};
+                      .public_dir = (pub_dir == NULL) ? "." : pub_dir,
+                      .log_filepath = NULL,
+                      .log_level = LOG_LEVEL_INFO};
 }
 
 HttpConfig chttp_config_load(const char *filepath, Arena *arena) {

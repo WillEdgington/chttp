@@ -1,11 +1,14 @@
 #ifndef CHTTP_CONFIG_H
 #define CHTTP_CONFIG_H
 
+#include "chttp/logger.h"
 #include "clib/arena.h"
 
 typedef struct {
   int port;
   const char *public_dir;
+  LogLevel log_level;
+  const char *log_filepath;
 } HttpConfig;
 
 // port < 0 defaults to 8080, *pub_dir of NULL defaults to "."
