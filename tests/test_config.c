@@ -1,4 +1,5 @@
 #include "chttp/config.h"
+#include "chttp/logger.h"
 #include "clib/arena.h"
 #include "clib/test_framework.h"
 #include <stdio.h>
@@ -86,6 +87,21 @@ void test_missing_config_toml(Arena *a) {
                 "Should retain default public_dir when config toml is missing");
 }
 
+void test_logging_config_toml(Arena *a) {
+  const char *cfg = "[server]\n"
+                    "log_level = ERROR\n"
+                    "log_file = ./server.log";
+  setup_test_config_mock("test_dir/test_logging.toml", cfg);
+
+  HttpConfig config = chttp_config_load("test_dir/test_logging.toml", a);
+  ASSERT_INT_EQ(config.log_level, LOG_LEVEL_ERROR,
+                "Should correctly parse and assign log level");
+  ASSERT_STR_EQ(config.log_filepath, "./server.log",
+                "Should allocate and match log file path string");
+
+  teardown_test_config_mock("test_dir/test_logging.toml");
+}
+
 int main() {
   Arena a;
   arena_init(&a, 4096); // 4 KB
@@ -97,6 +113,7 @@ int main() {
   test_noisy_config_toml(&a);
   test_invalid_config_toml(&a);
   test_missing_config_toml(&a);
+  test_logging_config_toml(&a);
   test_summary();
 
   teardown_test_dir();
