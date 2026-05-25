@@ -18,22 +18,22 @@ static void handle_shutdown(int sig) {
 }
 
 int main(void) {
-  if (chttp_logger_init(NULL, LOG_LEVEL_INFO) != 0) {
-    fprintf(stderr, "[FATAL] Failed to initialize logger.\n");
-    return 1;
-  }
-
-  LOG_INFO("Initializing system sub-modules...");
-
   Arena config_arena;
   if (arena_init(&config_arena, CONFIG_ARENA_SIZE) != 0) {
     fprintf(stderr,
-            "[FATAL] Failed to initialize configuration memory arena.\n");
-    chttp_logger_free();
+            "[FATAL] Failed to initialise configuration memory arena.\n");
     return 1;
   }
 
   HttpConfig config = chttp_config_load("server.toml", &config_arena);
+
+  if (chttp_logger_init(config.log_filepath, config.log_level) != 0) {
+    fprintf(stderr, "[FATAL] Failed to initialise logger.\n");
+    arena_free(&config_arena);
+    return 1;
+  }
+
+  LOG_INFO("System configuration data resolved successfully.");
 
   struct stat path_stat;
   if (stat(config.public_dir, &path_stat) != 0 || !S_ISDIR(path_stat.st_mode)) {
