@@ -3,17 +3,43 @@
 #include "chttp/fs.h"
 #include "chttp/http.h"
 #include "clib/hashmap.h"
+#include <stdio.h>
 #include <string.h>
+
+static const char *resolve_pretty_path(const char *path, Arena *arena) {
+  size_t len = strlen(path);
+  const char *last_slash = strrchr(path, '/');
+  const char *last_dot = strrchr(path, '.');
+
+  if (len > 0 && path[len - 1] == '/') { // add index.html
+    size_t suffix_len = strlen("index.html");
+    char *new_path = arena_alloc(arena, len + suffix_len + 1);
+    if (new_path == NULL)
+      return NULL;
+    snprintf(new_path, len + suffix_len + 1, "%sindex.html", path);
+    path = new_path;
+  } else if (last_dot == NULL ||
+             (last_slash != NULL && last_dot < last_slash)) { // add /index.html
+    size_t suffix_len = strlen("/index.html");
+    char *new_path = arena_alloc(arena, len + suffix_len + 1);
+    if (new_path == NULL)
+      return NULL;
+    snprintf(new_path, len + suffix_len + 1, "%s/index.html", path);
+    path = new_path;
+  }
+  return path;
+}
 
 typedef void (*MethodHandler)(HttpRequest *req, const char *base_dir,
                               HttpResponse *res);
 
 static void handle_get(HttpRequest *req, const char *base_dir,
                        HttpResponse *res) {
-  const char *target_path = req->path;
-
-  if (strcmp(target_path, "/") == 0)
-    target_path = "/index.html";
+  const char *target_path = resolve_pretty_path(req->path, req->arena);
+  if (target_path == NULL) {
+    chttp_create_error_response(res, 500, "Internal Server Error", base_dir);
+    return;
+  }
 
   char *full_path = chttp_resolve_path(target_path, base_dir, req->arena);
   if (full_path == NULL) {
