@@ -3,6 +3,7 @@
 #include "chttp/handler.h"
 #include "chttp/http.h"
 #include "chttp/logger.h"
+#include "chttp/tpool.h"
 #include "clib/arena.h"
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -14,14 +15,15 @@
 #define BACKLOG 10
 #define BUFFER_SIZE 4096           // 4 KB
 #define CONNECTION_ARENA_SIZE 8192 // 8 KB
+#define DEFAULT_THREAD_COUNT 4
 
 char *reconstruct_request_line(HttpRequest *req) {
   const char *method_str = chttp_method_to_string(req->method);
   size_t line_len =
       snprintf(NULL, 0, "%s %s %s", method_str, req->path ? req->path : "/",
                req->version ? req->version : "HTTP/1.1");
-  char *req_line_buf = arena_alloc(req->arena, line_len);
-  snprintf(req_line_buf, line_len, "%s %s %s",
+  char *req_line_buf = arena_alloc(req->arena, line_len + 1);
+  snprintf(req_line_buf, line_len + 1, "%s %s %s",
            chttp_method_to_string(req->method), req->path ? req->path : "/",
            req->version ? req->version : "HTTP/1.1");
   return req_line_buf;
@@ -105,6 +107,17 @@ int chttp_listen_and_serve(HttpConfig *config) {
     return -1;
   }
 
+  chttp_tpool_t *pool =
+      chttp_tpool_create(DEFAULT_THREAD_COUNT, config->public_dir);
+  if (pool == NULL) {
+    LOG_ERROR("Failed to initialize system worker thread pool engine.");
+    close(server_fd);
+    return -1;
+  }
+
+  LOG_INFO("Thread pool engine spawned with %d active workers.",
+           DEFAULT_THREAD_COUNT);
+
   while (1) {
     struct sockaddr_in address;
     socklen_t addrlen = sizeof(address);
@@ -112,9 +125,14 @@ int chttp_listen_and_serve(HttpConfig *config) {
 
     if (client_fd >= 0) {
       char *client_ip = inet_ntoa(address.sin_addr);
-      chttp_handle_connection(client_fd, config->public_dir, client_ip);
-      close(client_fd);
+      if (chttp_tpool_push(pool, client_fd, client_ip) != 0) {
+        LOG_WARN("Task drop detected: server queue full or shutting down.");
+        close(client_fd);
+      }
     }
   }
+
+  chttp_tpool_destroy(pool);
+  close(server_fd);
   return 0;
 }
