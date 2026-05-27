@@ -20,7 +20,7 @@ void setup_test_index_mock() {
 
 void teardown_test_index_mock() { unlink("test_www/index.html"); }
 
-void test_handle_connection_sends_valid_http() {
+void test_handle_connection_sends_valid_http(Arena *a) {
   int fds[2];
 
   ASSERT(socketpair(AF_UNIX, SOCK_STREAM, 0, fds) == 0,
@@ -32,7 +32,7 @@ void test_handle_connection_sends_valid_http() {
   const char *request = "GET /index.html HTTP/1.1\r\n\r\n";
   write(client_side, request, strlen(request));
 
-  chttp_handle_connection(server_side, "test_www", NULL);
+  chttp_handle_connection(server_side, "test_www", NULL, a);
 
   char response[1024] = {0};
   ssize_t bytes_read = read(client_side, response, sizeof(response) - 1);
@@ -49,7 +49,7 @@ void test_handle_connection_sends_valid_http() {
   close(client_side);
 }
 
-void test_handle_connection_invalid_request() {
+void test_handle_connection_invalid_request(Arena *a) {
   int fds[2];
 
   socketpair(AF_UNIX, SOCK_STREAM, 0, fds);
@@ -60,13 +60,13 @@ void test_handle_connection_invalid_request() {
   write(client_side, bad_request, strlen(bad_request));
 
   ASSERT_INT_EQ(
-      chttp_handle_connection(server_side, "test_www", NULL), -1,
+      chttp_handle_connection(server_side, "test_www", NULL, a), -1,
       "Server should return -1 error status code for invalid request");
   close(server_side);
   close(client_side);
 }
 
-void test_handle_error_status_code_responses() {
+void test_handle_error_status_code_responses(Arena *a) {
   int fds[2];
 
   socketpair(AF_UNIX, SOCK_STREAM, 0, fds);
@@ -77,7 +77,7 @@ void test_handle_error_status_code_responses() {
   write(client_side, not_found_req, strlen(not_found_req));
 
   ASSERT_INT_EQ(
-      chttp_handle_connection(server_side, "test_www", NULL), 0,
+      chttp_handle_connection(server_side, "test_www", NULL, a), 0,
       "Server should return 0 (Handled) even when serving a 404 status code");
 
   char response[1024] = {0};
@@ -95,11 +95,16 @@ int main() {
   setup_test_dir();
   setup_test_index_mock();
 
+  Arena a;
+  arena_init(&a, 4096);
+
   printf("\nRunning: %s\n", __FILE__);
-  test_handle_connection_sends_valid_http();
-  test_handle_connection_invalid_request();
-  test_handle_error_status_code_responses();
+  test_handle_connection_sends_valid_http(&a);
+  test_handle_connection_invalid_request(&a);
+  test_handle_error_status_code_responses(&a);
   test_summary();
+
+  arena_free(&a);
 
   teardown_test_index_mock();
   teardown_test_dir();
