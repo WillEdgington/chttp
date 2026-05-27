@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #define TEST_THREAD_COUNT 4
+#define TEST_WORKER_ARENA_SIZE 4096 // 4 KB
 
 void setup_test_dir() { mkdir("test_dir", 0777); }
 
@@ -23,7 +24,8 @@ void setup_test_index_mock() {
 void teardown_test_index_mock() { unlink("test_dir/index.html"); }
 
 void test_tpool_create_and_destroy() {
-  chttp_tpool_t *pool = chttp_tpool_create(TEST_THREAD_COUNT, "test_dir");
+  chttp_tpool_t *pool =
+      chttp_tpool_create(TEST_THREAD_COUNT, "test_dir", TEST_WORKER_ARENA_SIZE);
 
   ASSERT_PTR_NOT_NULL(
       pool, "Thread pool initialization should return a valid pointer");
@@ -35,7 +37,8 @@ void test_tpool_create_and_destroy() {
 }
 
 void test_tpool_processes_request_asynchronously() {
-  chttp_tpool_t *pool = chttp_tpool_create(TEST_THREAD_COUNT, "test_dir");
+  chttp_tpool_t *pool =
+      chttp_tpool_create(TEST_THREAD_COUNT, "test_dir", TEST_WORKER_ARENA_SIZE);
   ASSERT_PTR_NOT_NULL(pool, "Pool must boot cleanly to process tasks");
 
   int fds[2];
