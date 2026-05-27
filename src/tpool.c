@@ -5,14 +5,12 @@
 #include <string.h>
 #include <unistd.h>
 
-#define CONNECTION_ARENA_SIZE 8192
-
 static void *worker_routine(void *arg) {
   chttp_tpool_t *pool = (chttp_tpool_t *)arg;
   chttp_queue_t *queue = &pool->queue;
 
   Arena worker_arena;
-  if (arena_init(&worker_arena, CONNECTION_ARENA_SIZE) != 0) {
+  if (arena_init(&worker_arena, pool->worker_arena_size) != 0) {
     LOG_ERROR("Fatal: Worker thread failed to allocate its persistent arena.");
     return NULL;
   }
@@ -47,12 +45,14 @@ static void *worker_routine(void *arg) {
   return NULL;
 }
 
-chttp_tpool_t *chttp_tpool_create(int thread_count, const char *public_dir) {
+chttp_tpool_t *chttp_tpool_create(int thread_count, const char *public_dir,
+                                  int worker_arena_size) {
   chttp_tpool_t *pool = malloc(sizeof(chttp_tpool_t));
   if (pool == NULL)
     return NULL;
 
   pool->thread_count = thread_count;
+  pool->worker_arena_size = worker_arena_size;
   pool->public_dir = public_dir;
   pool->queue.head = NULL;
   pool->queue.tail = NULL;

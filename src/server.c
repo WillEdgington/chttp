@@ -96,8 +96,8 @@ int chttp_listen_and_serve(HttpConfig *config) {
     return -1;
   }
 
-  chttp_tpool_t *pool =
-      chttp_tpool_create(config->thread_count, config->public_dir);
+  chttp_tpool_t *pool = chttp_tpool_create(
+      config->thread_count, config->public_dir, config->worker_arena_size);
   if (pool == NULL) {
     LOG_ERROR("Failed to initialize system worker thread pool engine.");
     close(server_fd);
