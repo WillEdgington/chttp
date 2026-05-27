@@ -15,7 +15,6 @@
 #define BACKLOG 10
 #define BUFFER_SIZE 4096           // 4 KB
 #define CONNECTION_ARENA_SIZE 8192 // 8 KB
-#define DEFAULT_THREAD_COUNT 4
 
 char *reconstruct_request_line(HttpRequest *req) {
   const char *method_str = chttp_method_to_string(req->method);
@@ -108,7 +107,7 @@ int chttp_listen_and_serve(HttpConfig *config) {
   }
 
   chttp_tpool_t *pool =
-      chttp_tpool_create(DEFAULT_THREAD_COUNT, config->public_dir);
+      chttp_tpool_create(config->thread_count, config->public_dir);
   if (pool == NULL) {
     LOG_ERROR("Failed to initialize system worker thread pool engine.");
     close(server_fd);
@@ -116,7 +115,7 @@ int chttp_listen_and_serve(HttpConfig *config) {
   }
 
   LOG_INFO("Thread pool engine spawned with %d active workers.",
-           DEFAULT_THREAD_COUNT);
+           config->thread_count);
 
   while (1) {
     struct sockaddr_in address;

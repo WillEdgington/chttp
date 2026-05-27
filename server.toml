@@ -3,3 +3,4 @@ port = 9000
 public_dir = ./public
 log_level = DEBUG
 # log_file = ./server.log
+thread_count = 4

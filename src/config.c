@@ -76,6 +76,19 @@ static void assign_log_filepath(HttpConfig *config, const char *val,
   }
 }
 
+static void assign_thread_count(HttpConfig *config, const char *val) {
+  if (val == NULL || *val == '\0')
+    return;
+
+  for (int i = 0; val[i] != '\0'; i++)
+    if (!isdigit((unsigned char)val[i]))
+      return;
+
+  int parsed_tc = atoi(val);
+  if (parsed_tc > 0)
+    config->thread_count = parsed_tc;
+}
+
 static void resolve_server_key_value_pair(HttpConfig *config, const char *key,
                                           const char *val, Arena *arena) {
   if (strcmp(key, "port") == 0) {
@@ -86,6 +99,8 @@ static void resolve_server_key_value_pair(HttpConfig *config, const char *key,
     assign_log_level(config, val);
   } else if (strcmp(key, "log_file") == 0) {
     assign_log_filepath(config, val, arena);
+  } else if (strcmp(key, "thread_count") == 0) {
+    assign_thread_count(config, val);
   }
 }
 
@@ -175,7 +190,8 @@ HttpConfig chttp_config_init(int port, const char *pub_dir) {
   return (HttpConfig){.port = (port <= 0) ? 8080 : port,
                       .public_dir = (pub_dir == NULL) ? "." : pub_dir,
                       .log_filepath = NULL,
-                      .log_level = LOG_LEVEL_INFO};
+                      .log_level = LOG_LEVEL_INFO,
+                      .thread_count = 4};
 }
 
 HttpConfig chttp_config_load(const char *filepath, Arena *arena) {

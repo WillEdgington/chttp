@@ -9,6 +9,7 @@ typedef struct {
   const char *public_dir;
   LogLevel log_level;
   const char *log_filepath;
+  int thread_count;
 } HttpConfig;
 
 // port < 0 defaults to 8080, *pub_dir of NULL defaults to "."
