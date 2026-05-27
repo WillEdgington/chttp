@@ -1,12 +1,21 @@
 #include "chttp/tpool.h"
 #include "chttp/server.h"
+#include "clib/arena.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
+#define CONNECTION_ARENA_SIZE 8192
+
 static void *worker_routine(void *arg) {
   chttp_tpool_t *pool = (chttp_tpool_t *)arg;
   chttp_queue_t *queue = &pool->queue;
+
+  Arena worker_arena;
+  if (arena_init(&worker_arena, CONNECTION_ARENA_SIZE) != 0) {
+    LOG_ERROR("Fatal: Worker thread failed to allocate its persistent arena.");
+    return NULL;
+  }
 
   while (1) {
     pthread_mutex_lock(&queue->lock);
@@ -26,11 +35,15 @@ static void *worker_routine(void *arg) {
       queue->tail = NULL;
 
     pthread_mutex_unlock(&queue->lock);
-    chttp_handle_connection(task->client_fd, pool->public_dir, task->client_ip);
+    chttp_handle_connection(task->client_fd, pool->public_dir, task->client_ip,
+                            &worker_arena);
+
     close(task->client_fd);
     free(task);
+    arena_reset(&worker_arena);
   }
 
+  arena_free(&worker_arena);
   return NULL;
 }
 

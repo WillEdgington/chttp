@@ -50,26 +50,19 @@ static int setup_listener(int port) {
 }
 
 int chttp_handle_connection(int client_fd, const char *pub_dir,
-                            const char *client_ip) {
-  Arena connection_arena;
-  if (arena_init(&connection_arena, CONNECTION_ARENA_SIZE) != 0)
-    return -1;
-
-  char *buffer = arena_alloc(&connection_arena, BUFFER_SIZE);
+                            const char *client_ip, Arena *arena) {
+  char *buffer = arena_alloc(arena, BUFFER_SIZE);
   if (buffer == NULL) {
-    arena_free(&connection_arena);
     return -1;
   }
 
   ssize_t valread = recv(client_fd, buffer, BUFFER_SIZE - 1, 0);
   if (valread <= 0) {
-    arena_free(&connection_arena);
     return -1;
   }
 
-  HttpRequest *req = chttp_parse_request(buffer, &connection_arena);
+  HttpRequest *req = chttp_parse_request(buffer, arena);
   if (req == NULL) {
-    arena_free(&connection_arena);
     return -1;
   }
   HttpResponse *res = chttp_handle_request(req, pub_dir);
@@ -77,7 +70,6 @@ int chttp_handle_connection(int client_fd, const char *pub_dir,
     if (res != NULL)
       chttp_response_free(res);
     chttp_request_free(req);
-    arena_free(&connection_arena);
     return -1;
   }
 
@@ -86,7 +78,6 @@ int chttp_handle_connection(int client_fd, const char *pub_dir,
   if (raw_res == NULL) {
     chttp_request_free(req);
     chttp_response_free(res);
-    arena_free(&connection_arena);
     return -1;
   }
   send(client_fd, raw_res, res_len, 0);
@@ -95,7 +86,6 @@ int chttp_handle_connection(int client_fd, const char *pub_dir,
                  res_len);
   chttp_request_free(req);
   chttp_response_free(res);
-  arena_free(&connection_arena);
   return 0;
 }
 
