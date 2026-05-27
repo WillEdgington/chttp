@@ -12,10 +12,22 @@ typedef void (*kvAssign)(HttpConfig *config, const char *key, const char *val,
 static char *trim_whitespace(char *str) {
   while (isspace((unsigned char)*str))
     str++;
-  if (*str == '\0')
-    return str;
+  if (*str == '\0' || *str == '#')
+    return str + strlen(str);
 
   char *end = str + strlen(str) - 1;
+
+  char *hsh = strchr(str, '#');
+  char *scol = strchr(str, ';');
+  if (hsh != NULL || scol != NULL) {
+    if (hsh == NULL) {
+      end = scol - 1;
+    } else if (scol == NULL) {
+      end = hsh - 1;
+    } else
+      end = hsh < scol ? hsh - 1 : scol - 1;
+  }
+
   while (end > str && isspace((unsigned char)*end))
     end--;
   end[1] = '\0';
@@ -123,7 +135,7 @@ static char *resolve_config_subsection(HttpConfig *config, const char *content,
       line_buf[line_len] = '\0';
 
       char *trimmed = trim_whitespace(line_buf);
-      if (trimmed[0] != '\0' && trimmed[0] != '#' && trimmed[0] != ';') {
+      if (trimmed[0] != '\0') {
         char *eq = strchr(trimmed, '=');
         if (eq != NULL) {
           *eq = '\0';
