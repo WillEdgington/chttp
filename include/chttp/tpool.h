@@ -23,12 +23,15 @@ typedef struct {
   pthread_t *threads;
   int thread_count;
   int worker_arena_size;
+  int keep_alive_default;
+  int conn_timeout;
   chttp_queue_t queue;
   const char *public_dir;
 } chttp_tpool_t;
 
 chttp_tpool_t *chttp_tpool_create(int thread_count, const char *public_dir,
-                                  int worker_arena_size);
+                                  int worker_arena_size, int keep_alive_default,
+                                  int conn_timeout);
 int chttp_tpool_push(chttp_tpool_t *pool, int client_fd, const char *client_ip);
 void chttp_tpool_destroy(chttp_tpool_t *pool);
 

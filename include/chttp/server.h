@@ -6,7 +6,8 @@
 #include <stddef.h>
 
 int chttp_handle_connection(int client_fd, const char *pub_dir,
-                            const char *client_ip, Arena *arena);
+                            const char *client_ip, Arena *arena,
+                            int keep_alive_default, int conn_timeout);
 int chttp_listen_and_serve(HttpConfig *config);
 
 #endif

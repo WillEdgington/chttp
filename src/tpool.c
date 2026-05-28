@@ -34,10 +34,12 @@ static void *worker_routine(void *arg) {
 
     pthread_mutex_unlock(&queue->lock);
     chttp_handle_connection(task->client_fd, pool->public_dir, task->client_ip,
-                            &worker_arena);
+                            &worker_arena, pool->keep_alive_default,
+                            pool->conn_timeout);
 
     close(task->client_fd);
     free(task);
+
     arena_reset(&worker_arena);
   }
 
@@ -46,13 +48,16 @@ static void *worker_routine(void *arg) {
 }
 
 chttp_tpool_t *chttp_tpool_create(int thread_count, const char *public_dir,
-                                  int worker_arena_size) {
+                                  int worker_arena_size, int keep_alive_default,
+                                  int conn_timeout) {
   chttp_tpool_t *pool = malloc(sizeof(chttp_tpool_t));
   if (pool == NULL)
     return NULL;
 
   pool->thread_count = thread_count;
   pool->worker_arena_size = worker_arena_size;
+  pool->keep_alive_default = keep_alive_default;
+  pool->conn_timeout = conn_timeout;
   pool->public_dir = public_dir;
   pool->queue.head = NULL;
   pool->queue.tail = NULL;
