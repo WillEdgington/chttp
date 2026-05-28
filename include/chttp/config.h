@@ -11,6 +11,9 @@ typedef struct {
   const char *log_filepath;
   int thread_count;
   int worker_arena_size;
+  int listen_backlog;
+  int keep_alive_default;
+  int connection_timeout;
 } HttpConfig;
 
 // port < 0 defaults to 8080, *pub_dir of NULL defaults to "."

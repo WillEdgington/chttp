@@ -1,9 +1,17 @@
 [server]
+# Basic server configs
 port = 9000
 public_dir = ./public
+listen_backlog = 10
 
+# logger configs
 log_level = DEBUG
 # log_file = ./server.log
 
+# Thread pool configs
 thread_count = 4
 worker_arena_size = 8192 # 8 KB per worker
+
+# keep-alive configs
+default_keep_alive = false
+connection_timeout = 5

@@ -60,6 +60,19 @@ static void assign_public_dir(HttpConfig *config, const char *val,
   }
 }
 
+static void assign_listen_backlog(HttpConfig *config, const char *val) {
+  if (val == NULL || *val == '\0')
+    return;
+
+  for (int i = 0; val[i] != '\0'; i++)
+    if (!isdigit((unsigned char)val[i]))
+      return;
+
+  int parsed_lb = atoi(val);
+  if (parsed_lb > 0 && parsed_lb <= 4096)
+    config->listen_backlog = parsed_lb;
+}
+
 static void assign_log_level(HttpConfig *config, const char *val) {
   if (val == NULL || *val == '\0')
     return;
@@ -114,12 +127,38 @@ static void assign_worker_arena_size(HttpConfig *config, const char *val) {
     config->worker_arena_size = parsed_was;
 }
 
+static void assign_default_keep_alive(HttpConfig *config, const char *val) {
+  if (val == NULL || *val == '\0')
+    return;
+
+  if (strcmp(val, "true") == 0 || strcmp(val, "1") == 0) {
+    config->keep_alive_default = 1;
+  } else if (strcmp(val, "false") == 0 || strcmp(val, "0") == 0) {
+    config->keep_alive_default = 0;
+  }
+}
+
+static void assign_connection_timeout(HttpConfig *config, const char *val) {
+  if (val == NULL || *val == '\0')
+    return;
+
+  for (int i = 0; val[i] != '\0'; i++)
+    if (!isdigit((unsigned char)val[i]))
+      return;
+
+  int parsed_ct = atoi(val);
+  if (parsed_ct >= 0)
+    config->connection_timeout = parsed_ct;
+}
+
 static void resolve_server_key_value_pair(HttpConfig *config, const char *key,
                                           const char *val, Arena *arena) {
   if (strcmp(key, "port") == 0) {
     assign_port(config, val);
   } else if (strcmp(key, "public_dir") == 0) {
     assign_public_dir(config, val, arena);
+  } else if (strcmp(key, "listen_backlog") == 0) {
+    assign_listen_backlog(config, val);
   } else if (strcmp(key, "log_level") == 0) {
     assign_log_level(config, val);
   } else if (strcmp(key, "log_file") == 0) {
@@ -128,6 +167,10 @@ static void resolve_server_key_value_pair(HttpConfig *config, const char *key,
     assign_thread_count(config, val);
   } else if (strcmp(key, "worker_arena_size") == 0) {
     assign_worker_arena_size(config, val);
+  } else if (strcmp(key, "default_keep_alive") == 0) {
+    assign_default_keep_alive(config, val);
+  } else if (strcmp(key, "connection_timeout") == 0) {
+    assign_connection_timeout(config, val);
   }
 }
 
@@ -218,8 +261,11 @@ HttpConfig chttp_config_init(int port, const char *pub_dir) {
                       .public_dir = (pub_dir == NULL) ? "." : pub_dir,
                       .log_filepath = NULL,
                       .log_level = LOG_LEVEL_INFO,
-                      .thread_count = 4,
-                      .worker_arena_size = 8192}; // 8 KB default
+                      .thread_count = 4,         // 4 thread default
+                      .worker_arena_size = 8192, // 8 KB default
+                      .listen_backlog = 10,      // allow for queue of 10
+                      .keep_alive_default = 1,   // keep connections alive
+                      .connection_timeout = 5};  // 5 second connection timeout
 }
 
 HttpConfig chttp_config_load(const char *filepath, Arena *arena) {

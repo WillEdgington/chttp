@@ -15,10 +15,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#define BACKLOG 10
-#define BUFFER_SIZE 4096       // 4 KB
-#define CONN_TIMEOUT_DEFAULT 5 // 5 seconds
-#define KEEP_ALIVE_DEF 1       // Yes
+#define BUFFER_SIZE 4096 // 4 KB
 
 static char *reconstruct_request_line(HttpRequest *req) {
   const char *method_str = chttp_method_to_string(req->method);
@@ -39,6 +36,7 @@ static int should_keep_alive(HttpRequest *req, int conn_default) {
   if (val != NULL) {
     char *conn = *(char **)val;
     if (conn != NULL) {
+      printf("Connection: %s", conn);
       if (strcmp(conn, "close") == 0)
         return 0;
       if (strcmp(conn, "keep-alive") == 0)
@@ -48,7 +46,7 @@ static int should_keep_alive(HttpRequest *req, int conn_default) {
   return conn_default == 0 ? 0 : 1;
 }
 
-static int setup_listener(int port) {
+static int setup_listener(int port, int listen_backlog) {
   int fd;
   struct sockaddr_in addr;
   int opt = 1;
@@ -62,7 +60,7 @@ static int setup_listener(int port) {
   addr.sin_port = htons(port);
 
   if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0 ||
-      listen(fd, BACKLOG) != 0)
+      listen(fd, listen_backlog) != 0)
     return -1;
 
   return fd;
@@ -85,7 +83,7 @@ int chttp_handle_connection(int client_fd, const char *pub_dir,
 
   int keep_alive = 1;
 
-  while (keep_alive) {
+  while (keep_alive == 1) {
     char *buffer = arena_alloc(arena, BUFFER_SIZE);
     if (buffer == NULL)
       return -1;
@@ -144,7 +142,7 @@ int chttp_handle_connection(int client_fd, const char *pub_dir,
 }
 
 int chttp_listen_and_serve(HttpConfig *config) {
-  int server_fd = setup_listener(config->port);
+  int server_fd = setup_listener(config->port, config->listen_backlog);
   if (server_fd < 0) {
     LOG_ERROR("Failed to bind listener to port %d", config->port);
     return -1;
@@ -152,7 +150,7 @@ int chttp_listen_and_serve(HttpConfig *config) {
 
   chttp_tpool_t *pool = chttp_tpool_create(
       config->thread_count, config->public_dir, config->worker_arena_size,
-      KEEP_ALIVE_DEF, CONN_TIMEOUT_DEFAULT);
+      config->keep_alive_default, config->connection_timeout);
   if (pool == NULL) {
     LOG_ERROR("Failed to initialise system worker thread pool engine.");
     close(server_fd);

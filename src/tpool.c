@@ -69,7 +69,7 @@ chttp_tpool_t *chttp_tpool_create(int thread_count, const char *public_dir,
     return NULL;
   }
 
-  pool->threads = malloc(sizeof(pthread_t) * thread_count);
+  pool->threads = malloc(sizeof(pthread_t) * pool->thread_count);
   if (pool->threads == NULL) {
     pthread_mutex_destroy(&pool->queue.lock);
     pthread_cond_destroy(&pool->queue.cond);
@@ -77,7 +77,7 @@ chttp_tpool_t *chttp_tpool_create(int thread_count, const char *public_dir,
     return NULL;
   }
 
-  for (int i = 0; i < thread_count; i++) {
+  for (int i = 0; i < pool->thread_count; i++) {
     if (pthread_create(&pool->threads[i], NULL, worker_routine, pool) != 0) {
       chttp_tpool_destroy(pool);
       return NULL;
