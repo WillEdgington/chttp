@@ -6,6 +6,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#define TEST_KEEP_ALIVE_DEFAULT 0 // Do not keep connection alive
+#define TEST_CONN_TIMEOUT 0
+
 void setup_test_dir() { mkdir("test_www", 0777); }
 
 void teardown_test_dir() { rmdir("test_www"); }
@@ -32,7 +35,8 @@ void test_handle_connection_sends_valid_http(Arena *a) {
   const char *request = "GET /index.html HTTP/1.1\r\n\r\n";
   write(client_side, request, strlen(request));
 
-  chttp_handle_connection(server_side, "test_www", NULL, a);
+  chttp_handle_connection(server_side, "test_www", NULL, a,
+                          TEST_KEEP_ALIVE_DEFAULT, TEST_CONN_TIMEOUT);
 
   char response[1024] = {0};
   ssize_t bytes_read = read(client_side, response, sizeof(response) - 1);
@@ -60,8 +64,9 @@ void test_handle_connection_invalid_request(Arena *a) {
   write(client_side, bad_request, strlen(bad_request));
 
   ASSERT_INT_EQ(
-      chttp_handle_connection(server_side, "test_www", NULL, a), -1,
-      "Server should return -1 error status code for invalid request");
+      chttp_handle_connection(server_side, "test_www", NULL, a,
+                              TEST_KEEP_ALIVE_DEFAULT, TEST_CONN_TIMEOUT),
+      -1, "Server should return -1 error status code for invalid request");
   close(server_side);
   close(client_side);
 }
@@ -77,7 +82,9 @@ void test_handle_error_status_code_responses(Arena *a) {
   write(client_side, not_found_req, strlen(not_found_req));
 
   ASSERT_INT_EQ(
-      chttp_handle_connection(server_side, "test_www", NULL, a), 0,
+      chttp_handle_connection(server_side, "test_www", NULL, a,
+                              TEST_KEEP_ALIVE_DEFAULT, TEST_CONN_TIMEOUT),
+      0,
       "Server should return 0 (Handled) even when serving a 404 status code");
 
   char response[1024] = {0};
