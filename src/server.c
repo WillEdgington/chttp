@@ -36,7 +36,6 @@ static int should_keep_alive(HttpRequest *req, int conn_default) {
   if (val != NULL) {
     char *conn = *(char **)val;
     if (conn != NULL) {
-      printf("Connection: %s", conn);
       if (strcmp(conn, "close") == 0)
         return 0;
       if (strcmp(conn, "keep-alive") == 0)
