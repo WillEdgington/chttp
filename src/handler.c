@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#define ERROR_TEMPLATE_DIR "templates"
+
 static const char *resolve_pretty_path(const char *path, Arena *arena) {
   size_t len = strlen(path);
   const char *last_slash = strrchr(path, '/');
@@ -37,20 +39,21 @@ static void handle_get(HttpRequest *req, const char *base_dir,
                        HttpResponse *res) {
   const char *target_path = resolve_pretty_path(req->path, req->arena);
   if (target_path == NULL) {
-    chttp_create_error_response(res, 500, "Internal Server Error", base_dir);
+    chttp_create_error_response(res, 500, "Internal Server Error",
+                                ERROR_TEMPLATE_DIR);
     return;
   }
 
   char *full_path = chttp_resolve_path(target_path, base_dir, req->arena);
   if (full_path == NULL) {
-    chttp_create_error_response(res, 404, "Not Found", base_dir);
+    chttp_create_error_response(res, 404, "Not Found", ERROR_TEMPLATE_DIR);
     return;
   }
 
   size_t file_size = 0;
   char *file_bytes = chttp_read_file(full_path, res->arena, &file_size);
   if (file_bytes == NULL) {
-    chttp_create_error_response(res, 404, "Not Found", base_dir);
+    chttp_create_error_response(res, 404, "Not Found", ERROR_TEMPLATE_DIR);
     return;
   }
 
@@ -68,7 +71,9 @@ static void handle_get(HttpRequest *req, const char *base_dir,
 static void handle_unknown(HttpRequest *req, const char *base_dir,
                            HttpResponse *res) {
   (void)req;
-  chttp_create_error_response(res, 405, "Method Not Allowed", base_dir);
+  (void)base_dir;
+  chttp_create_error_response(res, 405, "Method Not Allowed",
+                              ERROR_TEMPLATE_DIR);
 }
 
 static const MethodHandler method_handlers[] = {
